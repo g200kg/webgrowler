@@ -1,0 +1,376 @@
+<!doctype html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+<script>
+  WebAudioControlsOptions={
+    useMidi:1,
+    knobDiameter:64,
+    knobSrc:"./images/knob64.png",
+    knobSprites:100,
+    paramWidth:64,
+    paramHeight:15,
+    sliderHeight:128,
+    sliderWidth:16,
+    switchWidth:16,
+    switchHeight:16,
+    paramSrc:"./images/paramdisp.png",
+    outline:0,
+  };
+</script>
+<script src="./js/webaudio-controls.js"></script>
+<script src="./js/webaudio-pianoroll.js"></script>
+<script src="./js/audioworklet-adsrnode.js"></script>
+<script src="./js/webaudio-macronodes.js"></script>
+
+<script>
+
+var actx;
+var trig;
+var osc1, osc1level, osc2, osc2level, filter, env1, env2, lfo1, mastervol;
+var lfogain, envamp, lfoamp, lfo1osc1, lfo1osc2, lfo1filter, lfo1fm, lfo1amp;
+var oscfm, oscfmratio, env1osc1, env1osc2, env1filter;
+var cv, gate, gliderate;
+var delay, chorus;
+var seq,keyb;
+
+var playstep = 0;
+var playtime = 0;
+var playing = 0;
+
+async function Start(){
+  actx = new AudioContext();
+  await AdsrNode.Initialize(actx);
+
+  osc1 = new OscillatorNode(actx);
+  osc1level = new GainNode(actx);
+  osc2 = new OscillatorNode(actx);
+  osc2level = new GainNode(actx);
+  filter = new BiquadFilterNode(actx);
+  env1 = new AdsrNode(actx);
+  env2 = new AdsrNode(actx, {sustain:0, release:1});
+  lfo1 = new OscillatorNode(actx, {frequency:2});
+  lfogain = new GainNode(actx,{gain:0});
+  envamp = new GainNode(actx, {gain:0});
+  lfoamp = new GainNode(actx, {gain:1});
+  cv = new ConstantSourceNode(actx);
+  gate = new ConstantSourceNode(actx, {offset:0});
+  delay = new Macro_DelayNode(actx);
+  chorus = new Macro_ChorusNode(actx);
+  mastervol = new GainNode(actx, {gain:0.5});
+  shaper = new WaveShaperNode(actx);
+
+  oscfm = new GainNode(actx);
+  oscfmratio = new GainNode(actx);
+  env1osc1 = new GainNode(actx);
+  env1osc2 = new GainNode(actx);
+  env1fm = new GainNode(actx);
+  env1filter = new GainNode(actx);
+  env2osc1 = new GainNode(actx);
+  env2osc2 = new GainNode(actx);
+  env2fm = new GainNode(actx);
+  env2filter = new GainNode(actx);
+  lfo1osc1 = new GainNode(actx);
+  lfo1osc2 = new GainNode(actx);
+  lfo1filter = new GainNode(actx);
+  lfo1fm = new GainNode(actx);
+  lfo1amp = new GainNode(actx);
+  seq = document.getElementById("sequencer");
+  seq.setMMLString("l16o4do5drco4grgg+a4o5d8c8");
+  seq.preload=0.05;
+  keyb = document.getElementById("keyboard");
+
+  document.getElementById("env1osc1").addEventListener("input", (event)=>{env1osc1.gain.value = event.target.value;});
+  document.getElementById("env1osc2").addEventListener("input", (event)=>{env1osc2.gain.value = event.target.value;});
+  document.getElementById("env1fm").addEventListener("input", (event)=>{const v=event.target.value/10; env1fm.gain.value = v;});
+  document.getElementById("env1filter").addEventListener("input", (event)=>{const v=event.target.value*50; env1filter.gain.value = v;});
+  
+  document.getElementById("env2osc1").addEventListener("input", (event)=>{env2osc1.gain.value = event.target.value;});
+  document.getElementById("env2osc2").addEventListener("input", (event)=>{env2osc2.gain.value = event.target.value;});
+  document.getElementById("env2fm").addEventListener("input", (event)=>{const v=event.target.value/10; env2fm.gain.value = v;});
+  document.getElementById("env2filter").addEventListener("input", (event)=>{const v=event.target.value*50;env2filter.gain.value = v;});
+  document.getElementById("env2lfo").addEventListener("change", (event)=>{const v=event.target.value;if(v) env2.connect(lfogain.gain),lfogain.gain.value=0; else env2.disconnect(lfogain.gain),lfogain.gain.value=1;});
+  
+  document.getElementById("lfo1osc1").addEventListener("input", (event)=>{lfo1osc1.gain.value = event.target.value;});
+  document.getElementById("lfo1osc2").addEventListener("input", (event)=>{lfo1osc2.gain.value = event.target.value;});
+  document.getElementById("lfo1filter").addEventListener("input", (event)=>{const v=event.target.value*50;lfo1filter.gain.value = v;});
+  document.getElementById("lfo1fm").addEventListener("input", (event)=>{const v=event.target.value/10; lfo1fm.gain.value = v;});
+  document.getElementById("lfo1amp").addEventListener("input", (event)=>{const v=event.target.value/100; lfo1amp.gain.value = v;});
+
+  document.getElementById("osc1form1").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc1.type="sine"});
+  document.getElementById("osc1form2").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc1.type="sawtooth"});
+  document.getElementById("osc1form3").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc1.type="square"});
+  document.getElementById("osc1form4").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc1.type="triangle"});
+  document.getElementById("osc1tune").addEventListener("input", (event)=>{oscfmratio.gain.value = osc1.frequency.value = 440 * Math.pow(2, event.target.value / 12 - 6)});
+  document.getElementById("osc2form1").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc2.type="sine"});
+  document.getElementById("osc2form2").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc2.type="sawtooth"});
+  document.getElementById("osc2form3").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc2.type="square"});
+  document.getElementById("osc2form4").addEventListener("change", (event)=>{const v=event.target.value; if(v) osc2.type="triangle"});
+  document.getElementById("osc2tune").addEventListener("input", (event)=>{osc2.frequency.value = 440 * Math.pow(2, event.target.value / 12 - 6)});
+  document.getElementById("oscdetune").addEventListener("input", (event)=>{osc1.detune.value = event.target.value;osc2.detune.value=-event.target.value;});
+  document.getElementById("oscfm").addEventListener("input", (event)=>{oscfm.gain.value = event.target.value;});
+  document.getElementById("oscmix").addEventListener("input", (event)=>{const v=event.target.value/100;osc1level.gain.value = 1 - v; osc2level.gain.value = v;});
+  document.getElementById("cutoff").addEventListener("input", (event)=>{filter.frequency.value = 440 * Math.pow(2, event.target.value - 8)});
+  document.getElementById("resonance").addEventListener("input", (event)=>{filter.Q.value = event.target.value});
+  document.getElementById("env1attack").addEventListener("input", (event)=>{env1.attack.value = event.target.value;});
+  document.getElementById("env1attackcurve").addEventListener("input", (event)=>{env1.attackcurve.value = event.target.value;});
+  document.getElementById("env1decay").addEventListener("input", (event)=>{env1.decay.value = event.target.value;});
+  document.getElementById("env1sustain").addEventListener("input", (event)=>{env1.sustain.value = event.target.value;});
+  document.getElementById("env1release").addEventListener("input", (event)=>{env1.release.value = event.target.value;});
+
+  document.getElementById("lfo1form1").addEventListener("change", (event)=>{const v=event.target.value; if(v) lfo1.type="sine"});
+  document.getElementById("lfo1form2").addEventListener("change", (event)=>{const v=event.target.value; if(v) lfo1.type="sawtooth"});
+  document.getElementById("lfo1form3").addEventListener("change", (event)=>{const v=event.target.value; if(v) lfo1.type="square"});
+  document.getElementById("lfo1form4").addEventListener("change", (event)=>{const v=event.target.value; if(v) lfo1.type="triangle"});
+  document.getElementById("lfo1freq").addEventListener("input", (event)=>{lfo1.frequency.value = event.target.value;});
+  document.getElementById("env2attack").addEventListener("input", (event)=>{env2.attack.value = event.target.value;});
+  document.getElementById("env2decay").addEventListener("input", (event)=>{env2.decay.value = event.target.value;});
+
+  document.getElementById("delaytime").addEventListener("input", (event)=>{delay.delayTime.value = event.target.value;});
+  document.getElementById("delaymix").addEventListener("input", (event)=>{delay.mix.value = event.target.value;});
+  document.getElementById("chorusrate").addEventListener("input", (event)=>{chorus.rate.value = event.target.value;});
+  document.getElementById("chorusdepth").addEventListener("input", (event)=>{chorus.depth.value = event.target.value;});
+
+  document.getElementById("tempo").addEventListener("input", (event)=>{seq.tempo = event.target.value;});
+  document.getElementById("glide").addEventListener("input", (event)=>{const v=event.target.value/1000; gliderate = v;});
+  document.getElementById("mastervol").addEventListener("input", (event)=>{const v=event.target.value/100;mastervol.gain.value = v*v*0.5;});
+  document.getElementById("playbtn").addEventListener("change", (event)=>{
+    if(event.target.value)
+      seq.play(actx, PlayCallback);
+    else
+      seq.stop();
+  });
+
+  cv.connect(osc1.detune);
+  cv.connect(osc2.detune);
+  cv.connect(filter.detune);
+  gate.connect(env1.trigger);
+  gate.connect(env2.trigger);
+  osc1.connect(osc1level).connect(filter)
+    .connect(envamp).connect(lfoamp).connect(shaper)
+    .connect(delay).connect(chorus).connect(mastervol).connect(actx.destination);
+  osc2.connect(osc2level).connect(filter);
+  osc2.connect(oscfm).connect(oscfmratio).connect(osc1.frequency);
+    
+  env1.connect(env1osc1).connect(osc1.detune);
+  env1.connect(env1osc2).connect(osc2.detune);
+  env1.connect(env1fm).connect(oscfm.gain);
+  env1.connect(env1filter).connect(filter.detune);
+  env1.connect(envamp.gain);
+
+  env2.connect(env2osc1).connect(osc1.detune);
+  env2.connect(env2osc2).connect(osc2.detune);
+  env2.connect(env2fm).connect(oscfm.gain);
+  env2.connect(env2filter).connect(filter.detune);
+
+  env2.connect(lfogain.gain);
+
+  lfo1.connect(lfogain);
+  lfogain.connect(lfo1osc1).connect(osc1.detune);
+  lfogain.connect(lfo1osc2).connect(osc2.detune);
+  lfogain.connect(lfo1filter).connect(filter.detune);
+  lfogain.connect(lfo1fm).connect(oscfm.gain);
+  lfogain.connect(lfo1amp).connect(lfoamp.gain);
+
+  const ctlknb=document.getElementsByTagName("webaudio-knob");
+  for(elm of ctlknb){
+    elm.dispatchEvent(new Event("input"));
+  }
+  const ctlsw=document.getElementsByTagName("webaudio-switch");
+  for(elm of ctlsw){
+    elm.dispatchEvent(new Event("change"));
+  }
+
+  osc1.start();
+  osc2.start();
+  lfo1.start();
+  cv.start();
+  gate.start();
+
+  keyb.addEventListener("change",(event)=>{
+    Note(event.note[1], event.note[0], actx.currentTime);
+  });
+
+  setInterval(()=>{
+    if(playing){
+      for(;;){
+        const time = playtime;
+        const val = document.getElementById("step"+(playstep+1)).value;
+        const on = document.getElementById("step"+(playstep+1)+"gate").value;
+        const tmp = 30 / document.getElementById("tempo").value;
+        if(time < actx.currentTime+0.1){
+          if(on){
+            Note(val, on, time);
+            Note(val, 0, time+tmp*0.8);
+          }
+          playtime += tmp;
+          playstep = (playstep + 1) & 7;
+        }
+        else
+          break;
+      }
+    }
+  },100);
+}
+function PlayCallback(ev){
+  Note(ev.n, 1, ev.t);
+  Note(ev.n, 0, ev.g);
+  keyb.setNote(1, ev.n, actx, ev.t);
+  keyb.setNote(0, ev.n, actx, ev.g);
+}
+function Note(note, on, when){
+  actx.resume();
+  cv.offset.setTargetAtTime(note * 100, when, gliderate);
+  if(on)
+    gate.offset.setTargetAtTime(1,when,0.005);
+  else
+    gate.offset.setValueAtTime(0, when);
+}
+function Play(){
+  if(playing ^= 1){
+    playtime = actx.currentTime + .1;
+    playstep = 0;
+  }
+}
+
+window.addEventListener("load", Start);
+
+</script>
+<style>
+body{
+  font-family: 'Roboto', sans-serif;
+}
+webaudio-knob{
+  position:absolute;
+}
+webaudio-param{
+  position:absolute;
+}
+webaudio-switch{
+  position:absolute;
+}
+webaudio-pianoroll{
+  position:absolute;
+}
+webaudio-keyboard{
+  position:absolute;
+  left:32px;
+  top:544px;
+}
+#main{
+  position:relative;
+}
+#main img{
+  position:absolute;
+  left:0;
+  top:0;
+}
+
+</style>
+</head>
+<body>
+<div id="main">
+<img src="./images/background.png"/>
+
+<webaudio-switch id="osc1form1" type="radio" group="osc1form" style="left:40px;top:72px"></webaudio-switch>
+<webaudio-switch id="osc1form2" type="radio" group="osc1form" style="left:40px;top:88px" value="1"></webaudio-switch>
+<webaudio-switch id="osc1form3" type="radio" group="osc1form" style="left:40px;top:104px"></webaudio-switch>
+<webaudio-switch id="osc1form4" type="radio" group="osc1form" style="left:40px;top:120px"></webaudio-switch>
+<webaudio-knob id="osc1tune" midilearn="1" value="0" min="-24" max="24" style="left:104px;top:56px"></webaudio-knob>
+<webaudio-param link="osc1tune" width="64" height="16" style="left:104px;top:120px"></webaudio-param>
+
+<webaudio-switch id="osc2form1" type="radio" group="osc2form" style="left:40px;top:200px"></webaudio-switch>
+<webaudio-switch id="osc2form2" type="radio" group="osc2form" style="left:40px;top:216px"></webaudio-switch>
+<webaudio-switch id="osc2form3" type="radio" group="osc2form" style="left:40px;top:232px" value="1"></webaudio-switch>
+<webaudio-switch id="osc2form4" type="radio" group="osc2form" style="left:40px;top:248px"></webaudio-switch>
+<webaudio-knob id="osc2tune" value="-12" min="-24" max="24" style="left:104px;top:184px"></webaudio-knob>
+<webaudio-param link="osc2tune" style="left:104px;top:248px"></webaudio-param>
+<webaudio-knob id="oscdetune" value="4" min="-100" max="100" style="left:168px;top:112px"></webaudio-knob>
+<webaudio-param link="oscdetune" style="left:168px;top:176px"></webaudio-param>
+<webaudio-knob id="oscfm" value="4.4" min="0" max="20" step="0.1" style="left:232px;top:112px"></webaudio-knob>
+<webaudio-param link="oscfm" style="left:232px;top:176px"></webaudio-param>
+<webaudio-knob id="oscmix" value="50" min="0" max="100" step="1" style="left:296px;top:112px"></webaudio-knob>
+<webaudio-param link="oscmix" style="left:296px;top:176px"></webaudio-param>
+
+<webaudio-knob id="env1attack" value="0.01" min="0" max="1" step="0.01" style="left:40px;top:312px"></webaudio-knob>
+<webaudio-param link="env1attack" style="left:40px;top:376px"></webaudio-param>
+<webaudio-knob id="env1attackcurve" value="0.01" min="0" max="1" step="0.01" style="left:104px;top:312px"></webaudio-knob>
+<webaudio-param link="env1attackcurve" style="left:104px;top:376px"></webaudio-param>
+<webaudio-knob id="env1decay" value="0.1" min="0" max="1" step="0.01" style="left:168px;top:312px"></webaudio-knob>
+<webaudio-param link="env1decay" style="left:176px;top:376px"></webaudio-param>
+<webaudio-knob id="env1sustain" value="0.5" min="0" max="1" step="0.01" style="left:232px;top:312px"></webaudio-knob>
+<webaudio-param link="env1sustain" style="left:240px;top:376px"></webaudio-param>
+<webaudio-knob id="env1release" value="0.3" min="0" max="1" step="0.01" style="left:296px;top:312px"></webaudio-knob>
+<webaudio-param link="env1release" style="left:304px;top:376px"></webaudio-param>
+
+<webaudio-knob id="env2attack" value="0.01" min="0" max="4" step="0.01" style="left:40px;top:440px"></webaudio-knob>
+<webaudio-param link="env2attack" style="left:40px;top:504px"></webaudio-param>
+<webaudio-knob id="env2decay" value="0.5" min="0" max="4" step="0.01" style="left:104px;top:440px"></webaudio-knob>
+<webaudio-param link="env2decay" style="left:104px;top:504px"></webaudio-param>
+
+<webaudio-switch id="lfo1form1" type="radio" group="lfo1form" style="left:232px;top:456px" value="1"></webaudio-switch>
+<webaudio-switch id="lfo1form2" type="radio" group="lfo1form" style="left:232px;top:472px"></webaudio-switch>
+<webaudio-switch id="lfo1form3" type="radio" group="lfo1form" style="left:232px;top:488px"></webaudio-switch>
+<webaudio-switch id="lfo1form4" type="radio" group="lfo1form" style="left:232px;top:504px"></webaudio-switch>
+<webaudio-knob id="lfo1freq" value="8" min="0.1" max="20" step="0.1" style="left:296px;top:440px"></webaudio-knob>
+<webaudio-param link="lfo1freq" style="left:296px;top:504px"></webaudio-param>
+
+<webaudio-knob id="cutoff" value="4.0" min="1" max="10" step="0.1" style="left:840px;top:56px"></webaudio-knob>
+<webaudio-param link="cutoff" style="left:840px;top:120px"></webaudio-param>
+<webaudio-knob id="resonance" value="8" min="0" max="50" style="left:904px;top:56px"></webaudio-knob>
+<webaudio-param link="resonance" style="left:904px;top:120px"></webaudio-param>
+
+<webaudio-knob id="env1osc1" value="0" min="-100" max="100" step="1" style="left:456px;top:56px"></webaudio-knob>
+<webaudio-param link="env1osc1" style="left:456px;top:120px"></webaudio-param>
+<webaudio-knob id="env1osc2" value="0" min="-100" max="100" step="1" style="left:520px;top:56px"></webaudio-knob>
+<webaudio-param link="env1osc2" style="left:520px;top:120px"></webaudio-param>
+<webaudio-knob id="env1fm" value="0" min="-100" max="100" step="1" style="left:584px;top:56px"></webaudio-knob>
+<webaudio-param link="env1fm" style="left:584px;top:120px"></webaudio-param>
+<webaudio-knob id="env1filter" value="0" min="-100" max="100" step="1" style="left:648px;top:56px"></webaudio-knob>
+<webaudio-param link="env1filter" style="left:648px;top:120px"></webaudio-param>
+
+<webaudio-knob id="env2osc1" value="0" min="-100" max="100" step="1" style="left:456px;top:136px"></webaudio-knob>
+<webaudio-param link="env2osc1" style="left:456px;top:200px"></webaudio-param>
+<webaudio-knob id="env2osc2" value="0" min="-100" max="100" step="1" style="left:520px;top:136px"></webaudio-knob>
+<webaudio-param link="env2osc2" style="left:520px;top:200px"></webaudio-param>
+<webaudio-knob id="env2fm" value="0" min="-100" max="100" step="1" style="left:584px;top:136px"></webaudio-knob>
+<webaudio-param link="env2fm" style="left:584px;top:200px"></webaudio-param>
+<webaudio-knob id="env2filter" value="20" min="-100" max="100" step="1" style="left:648px;top:136px"></webaudio-knob>
+<webaudio-param link="env2filter" style="left:648px;top:200px"></webaudio-param>
+<webaudio-switch id="env2lfo" type="toggle" style="left:736px;top:176px" value="1"></webaudio-switch>
+
+<webaudio-knob id="lfo1osc1" value="0" min="0" max="200" step="1" style="left:456px;top:216px"></webaudio-knob>
+<webaudio-param link="lfo1osc1" style="left:456px;top:280px"></webaudio-param>
+<webaudio-knob id="lfo1osc2" value="0" min="0" max="200" step="1" style="left:520px;top:216px"></webaudio-knob>
+<webaudio-param link="lfo1osc2" style="left:520px;top:280px"></webaudio-param>
+<webaudio-knob id="lfo1fm" value="0" min="0" max="100" step="1" style="left:584px;top:216px"></webaudio-knob>
+<webaudio-param link="lfo1fm" style="left:584px;top:280px"></webaudio-param>
+<webaudio-knob id="lfo1filter" value="25" min="0" max="100" step="1" style="left:648px;top:216px"></webaudio-knob>
+<webaudio-param link="lfo1filter" style="left:648px;top:280px"></webaudio-param>
+<webaudio-knob id="lfo1amp" value="0" min="0" max="100" step="1" style="left:712px;top:216px"></webaudio-knob>
+<webaudio-param link="lfo1amp" style="left:712px;top:280px"></webaudio-param>
+
+<webaudio-knob id="mastervol" value="50" min="0" max="100" step="1" style="left:1032px;top:56px"></webaudio-knob>
+<webaudio-param link="mastervol" style="left:1032px;top:120px"></webaudio-param>
+<webaudio-knob id="tempo" value="80" min="40" max="320" style="left:1032px;top:328px"></webaudio-knob>
+<webaudio-param link="tempo" style="left:1032px;top:392px"></webaudio-param>
+
+<webaudio-knob id="glide" value="20" min="0" max="100" step="1" style="left:1032px;top:440px"></webaudio-knob>
+<webaudio-param link="glide" style="left:1032px;top:504px"></webaudio-param>
+
+<webaudio-knob id="delaytime" value="0.25" min="0" max="1" step="0.01" style="left:840px;top:184px"></webaudio-knob>
+<webaudio-param link="delaytime" style="left:840px;top:248px"></webaudio-param>
+<webaudio-knob id="delaymix" value="0.15" min="0" max="1" step="0.01" style="left:904px;top:184px"></webaudio-knob>
+<webaudio-param link="delaymix" style="left:904px;top:248px"></webaudio-param>
+<webaudio-knob id="chorusrate" value="3" min="0.1" max="10" step="0.01" style="left:968px;top:184px"></webaudio-knob>
+<webaudio-param link="chorusrate" style="left:976px;top:248px"></webaudio-param>
+<webaudio-knob id="chorusdepth" value="0.3" min="0" max="1" step="0.01" style="left:1032px;top:184px"></webaudio-knob>
+<webaudio-param link="chorusdepth" style="left:1040px;top:248px"></webaudio-param>
+
+<webaudio-pianoroll id="sequencer" editmode="dragmono" width="568" height="296" xrange="16" xscroll="1" yscroll="1" kbwidth="20" wheelzoom="1" collt="#182529" coldk="#091314" style="left:440px;top:344px;"></webaudio-pianoroll>
+<webaudio-keyboard id="keyboard" width="336" height="112" min="60" keys="25"></webaudio-keyboard>
+<webaudio-switch id="playbtn" width="80" height="48" src="./images/playbtn.png"style="position:absolute;left:1024px;top:552px"></webaudio-switch>
+</div>
+
+</body>
+</html>  
