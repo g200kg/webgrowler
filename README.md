@@ -1,5 +1,4 @@
 # webgrowler
-
 **webgrowler** is a Web Synthesizer application.
 This is a application using several libraries developed for musical instrument web applications.
 
@@ -15,4 +14,3 @@ This is a application using several libraries developed for musical instrument w
 # [Live Demo Page](https://g200kg.github.io/webgrowler/demo.html)
 
 ![](./images/ss1.png)
-
