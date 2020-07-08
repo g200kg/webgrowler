@@ -9,7 +9,7 @@ This is a application using several libraries developed for musical instrument w
 * [webaudio-macronodes](https://github.com/g200kg/webaudio-macronodes) :
   * A library of various effects that can be used as nodes of the WebAudio API.
 * [audioworklet-adsrnode](https://github.com/g200kg/audioworklet-adsrnode) :
-  * AudioWorklet node that genrtating the synthesizer's ADSR curve.
+  * AudioWorklet node that generate the synthesizer's ADSR curve.
 
 # [Live Demo Page](https://g200kg.github.io/webgrowler/demo.html)
 
