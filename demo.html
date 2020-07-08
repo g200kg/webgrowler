@@ -2,6 +2,7 @@
 <html>
 <head>
 <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
 <script>
   WebAudioControlsOptions={
     knobDiameter:64,
@@ -253,16 +254,47 @@ webaudio-keyboard{
 }
 #main{
   position:relative;
+  margin:auto;
+  width:1130px;
+  height:700px;
 }
 #main img{
   position:absolute;
   left:0;
   top:0;
 }
-
+html{
+  padding:0;
+  margin:0;
+  background:#234;
+  font-family:Roboto;
+}
+#base{
+  width:1200px;
+  height:780px;
+  background:#112;
+  margin:auto;
+}
+#header{
+  font-family: 'Audiowide', cursive;
+  width:100%;
+  height:80px;
+  background:#67a;
+  margin-bottom:10px;
+  font-size:40px;
+  color:#cce;
+}
+#header img{
+  margin-right:20px;
+  vertical-align: middle;
+}
 </style>
 </head>
 <body>
+<div id="base">
+<div id="header"><a href="https://www.g200kg.com/" target="_blank"><img src="./images/g200kg160x80.png"/></a> WebGrowler
+  <div style="font-family:Roboto;font-size:14px;position:absolute;right:50px;top:20px;color:#ccc">GitHub Repository : <a href="https://github.com/g200kg/webgrowler" target="_blank">https://github.com/g200kg/webgrowler</a></div>
+</div>
 <div id="main">
 <img src="./images/background.png"/>
 
@@ -365,6 +397,6 @@ webaudio-keyboard{
 <webaudio-keyboard id="keyboard" width="336" height="112" min="60" keys="25"></webaudio-keyboard>
 <webaudio-switch id="playbtn" width="80" height="48" src="./images/playbtn.png"style="position:absolute;left:1024px;top:552px"></webaudio-switch>
 </div>
-
+</div>
 </body>
 </html>  
