@@ -937,7 +937,6 @@ ${this.basestyle}
       this.midicc=this.getAttr("midicc",null);
       this.midiController={};
       this.midiMode="normal";
-      console.log(this._width)
       if(this.midicc) {
           let ch = parseInt(this.midicc.substring(0, this.midicc.lastIndexOf("."))) - 1;
           let cc = parseInt(this.midicc.substring(this.midicc.lastIndexOf(".") + 1));
@@ -1072,8 +1071,8 @@ ${this.basestyle}
       window.addEventListener('touchcancel', pointerup);
       document.body.addEventListener('touchstart', preventScroll,{passive:false});
       this.redraw();
-      e.preventDefault();
-      e.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
       return false;
     }
   });
