@@ -227,6 +227,7 @@ function Note(note, on, when){
     gate.offset.setValueAtTime(0, when);
 }
 function Play(){
+  actx.resume();
   if(playing ^= 1){
     playtime = actx.currentTime + .1;
     playstep = 0;
