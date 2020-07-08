@@ -11,6 +11,8 @@ This is a application using several libraries developed for musical instrument w
 * [audioworklet-adsrnode](https://github.com/g200kg/audioworklet-adsrnode) :
   * AudioWorklet node that generate the synthesizer's ADSR curve.
 
+The concept is that you can make a flashy sound even if you move the knob without thinking too much.
+
 # [Live Demo Page](https://g200kg.github.io/webgrowler/demo.html)
 
 ![](./images/ss1.png)
