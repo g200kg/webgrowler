@@ -134,6 +134,7 @@ async function Start(){
   document.getElementById("glide").addEventListener("input", (event)=>{const v=event.target.value/1000; gliderate = v;});
   document.getElementById("mastervol").addEventListener("input", (event)=>{const v=event.target.value/100;mastervol.gain.value = v*v*0.5;});
   document.getElementById("playbtn").addEventListener("change", (event)=>{
+    actx.resume();
     if(event.target.value)
       seq.play(actx, PlayCallback);
     else
@@ -224,13 +225,6 @@ function Note(note, on, when){
     gate.offset.setTargetAtTime(1,when,0.005);
   else
     gate.offset.setValueAtTime(0, when);
-}
-function Play(){
-  actx.resume();
-  if(playing ^= 1){
-    playtime = actx.currentTime + .1;
-    playstep = 0;
-  }
 }
 
 window.addEventListener("load", Start);
