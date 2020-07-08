@@ -4,7 +4,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
 <script>
   WebAudioControlsOptions={
-    useMidi:1,
     knobDiameter:64,
     knobSrc:"./images/knob64.png",
     knobSprites:100,
@@ -277,7 +276,7 @@ webaudio-keyboard{
 <webaudio-switch id="osc1form2" type="radio" group="osc1form" style="left:40px;top:88px" value="1"></webaudio-switch>
 <webaudio-switch id="osc1form3" type="radio" group="osc1form" style="left:40px;top:104px"></webaudio-switch>
 <webaudio-switch id="osc1form4" type="radio" group="osc1form" style="left:40px;top:120px"></webaudio-switch>
-<webaudio-knob id="osc1tune" midilearn="1" value="0" min="-24" max="24" style="left:104px;top:56px"></webaudio-knob>
+<webaudio-knob id="osc1tune" value="0" min="-24" max="24" style="left:104px;top:56px"></webaudio-knob>
 <webaudio-param link="osc1tune" width="64" height="16" style="left:104px;top:120px"></webaudio-param>
 
 <webaudio-switch id="osc2form1" type="radio" group="osc2form" style="left:40px;top:200px"></webaudio-switch>
