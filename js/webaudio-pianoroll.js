@@ -700,7 +700,6 @@ customElements.define("webaudio-pianoroll", class Pianoroll extends HTMLElement 
                 e.preventDefault();
         };
         this.getPos=function(e){
-            console.log(this.lastx,this.lasty,this.rcMenu)
             let t=null;
             if(e){
                 t=e.target;
@@ -905,7 +904,6 @@ customElements.define("webaudio-pianoroll", class Pianoroll extends HTMLElement 
             if(this.longtaptimer)
                 clearInterval(this.longtaptimer);
             const pos=this.getPos(e);
-            console.log(pos)
             if(this.dragging.o=="m"){
                 this.menu.style.display="none";
                 this.rcMenu={x:0,y:0,width:0,height:0};
